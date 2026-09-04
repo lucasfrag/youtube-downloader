@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Downloader</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --border: #2a2e38;
+    --text: #f1f3f6;
+    --muted: #9aa2b1;
+    --accent: #ff3b3b;
+    --accent-hover: #e02e2e;
+    --success: #2ecc71;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(160deg, #14161c 0%, #0b0c10 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 48px 16px;
+  }
+  .wrap { width: 100%; max-width: 640px; }
+  h1 {
+    font-size: 1.8rem;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h1 .badge {
+    font-size: 0.6rem;
+    background: var(--accent);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  p.subtitle { color: var(--muted); margin-top: 0; margin-bottom: 28px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+  input[type="text"] {
+    flex: 1;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 13px 14px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 13px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .preview {
+    display: none;
+    margin-top: 20px;
+    gap: 14px;
+    align-items: center;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .preview.show { display: flex; }
+  .preview img { width: 100px; height: 56px; object-fit: cover; border-radius: 6px; background: #000; }
+  .preview .meta { flex: 1; min-width: 0; }
+  .preview .meta .title { font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .preview .meta .sub { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+  .preview .pill {
+    background: rgba(255,59,59,0.15);
+    color: #ff6b6b;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .progress-area { display: none; margin-top: 22px; }
+  .progress-area.show { display: block; }
+  .progress-bar-bg {
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    height: 14px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #ff7a4d);
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+  .progress-status {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .download-ready {
+    display: none;
+    margin-top: 18px;
+    text-align: center;
+  }
+  .download-ready.show { display: block; }
+  .download-ready a {
+    display: inline-block;
+    background: var(--success);
+    color: #06210f;
+    padding: 12px 24px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+  }
+  .error-box {
+    display: none;
+    margin-top: 16px;
+    background: rgba(255,59,59,0.1);
+    border: 1px solid rgba(255,59,59,0.4);
+    color: #ff8a8a;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+  }
+  .error-box.show { display: block; }
+  .footer-note {
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>YouTube Downloader <span class="badge">MP4 · Máx. Qualidade</span></h1>
+  <p class="subtitle">Cole o link de um vídeo ou playlist do YouTube para baixar em MP4 na melhor qualidade disponível.</p>
+
+  <div class="card">
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=... ou playlist" autofocus>
+      <button id="checkBtn">Buscar</button>
+    </div>
+
+    <div class="preview" id="preview">
+      <img id="previewThumb" src="" alt="">
+      <div class="meta">
+        <div class="title" id="previewTitle"></div>
+        <div class="sub" id="previewSub"></div>
+      </div>
+      <span class="pill" id="previewPill"></span>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div style="margin-top:18px;">
+      <button id="downloadBtn" style="width:100%; display:none;">Baixar em MP4 (qualidade máxima)</button>
+    </div>
+
+    <div class="progress-area" id="progressArea">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="progress-status">
+        <span id="progressMessage"><span class="spinner"></span>Iniciando...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+    </div>
+
+    <div class="download-ready" id="downloadReady">
+      <a id="downloadLink" href="#">⬇ Salvar arquivo</a>
+    </div>
+  </div>
+
+  <p class="footer-note">Uso pessoal apenas. Respeite os Termos de Serviço do YouTube e os direitos autorais dos criadores de conteúdo.</p>
+</div>
+
+<script>
+const urlInput = document.getElementById('urlInput');
+const checkBtn = document.getElementById('checkBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const preview = document.getElementById('preview');
+const previewThumb = document.getElementById('previewThumb');
+const previewTitle = document.getElementById('previewTitle');
+const previewSub = document.getElementById('previewSub');
+const previewPill = document.getElementById('previewPill');
+const errorBox = document.getElementById('errorBox');
+const progressArea = document.getElementById('progressArea');
+const progressFill = document.getElementById('progressFill');
+const progressMessage = document.getElementById('progressMessage');
+const progressPercent = document.getElementById('progressPercent');
+const downloadReady = document.getElementById('downloadReady');
+const downloadLink = document.getElementById('downloadLink');
+
+let pollTimer = null;
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.add('show');
+}
+function hideError() { errorBox.classList.remove('show'); }
+
+function resetUI() {
+  preview.classList.remove('show');
+  downloadBtn.style.display = 'none';
+  progressArea.classList.remove('show');
+  downloadReady.classList.remove('show');
+  hideError();
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+checkBtn.addEventListener('click', async () => {
+  const url = urlInput.value.trim();
+  if (!url) return;
+  resetUI();
+  checkBtn.disabled = true;
+  checkBtn.textContent = 'Buscando...';
+  try {
+    const res = await fetch('/api/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao buscar informações.');
+
+    previewThumb.src = data.thumbnail || '';
+    previewTitle.textContent = data.title || 'Sem título';
+    previewSub.textContent = data.uploader ? `Canal: ${data.uploader}` : '';
+    previewPill.textContent = data.isPlaylist ? `Playlist · ${data.count} vídeos` : 'Vídeo único';
+    preview.classList.add('show');
+    downloadBtn.style.display = 'block';
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Buscar';
+  }
+});
+
+downloadBtn.addEventListener('click', async () => {
+  const url = urlInput.value.trim();
+  if (!url) return;
+  hideError();
+  downloadReady.classList.remove('show');
+  downloadBtn.disabled = true;
+  progressArea.classList.add('show');
+  progressFill.style.width = '0%';
+  progressPercent.textContent = '0%';
+  progressMessage.innerHTML = '<span class="spinner"></span>Iniciando...';
+
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao iniciar download.');
+
+    const jobId = data.jobId;
+    pollTimer = setInterval(() => pollStatus(jobId), 1200);
+  } catch (err) {
+    showError(err.message);
+    downloadBtn.disabled = false;
+    progressArea.classList.remove('show');
+  }
+});
+
+async function pollStatus(jobId) {
+  try {
+    const res = await fetch(`/api/status/${jobId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao verificar status.');
+
+    progressFill.style.width = data.progress + '%';
+    progressPercent.textContent = data.progress + '%';
+    progressMessage.innerHTML = data.status === 'error'
+      ? data.message
+      : `<span class="spinner"></span>${data.message}`;
+
+    if (data.status === 'done') {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      progressMessage.textContent = 'Concluído!';
+      downloadLink.href = `/api/file/${jobId}`;
+      downloadReady.classList.add('show');
+      downloadBtn.disabled = false;
+    } else if (data.status === 'error') {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      showError(data.message);
+      downloadBtn.disabled = false;
+      progressArea.classList.remove('show');
+    }
+  } catch (err) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+    showError(err.message);
+    downloadBtn.disabled = false;
+  }
+}
+
+urlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') checkBtn.click();
+});
+</script>
+</body>
+</html>
